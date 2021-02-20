@@ -1,0 +1,95 @@
+version: '2.3'
+
+services:
+  redis:
+    restart: always
+    image: redis:5.0.9
+    container_name: redis
+    command:
+    - --loglevel warning
+    volumes:
+    - redis-data:/var/lib/redis:Z
+
+  postgresql:
+    restart: always
+    image: sameersbn/postgresql:11-20200524
+    container_name: postgresql
+    volumes:
+    - postgresql-data:/var/lib/postgresql:Z
+    environment:
+    - DB_USER=gitlab
+    - DB_PASS=password
+    - DB_NAME=gitlabhq_production
+    - DB_EXTENSION=pg_trgm
+
+  gitlab:
+    restart: always
+    #image: sameersbn/gitlab:12.9.2
+    image: gitlab/gitlab-ce:12.9.2-ce.0
+    container_name: gitlab
+    depends_on:
+    - redis
+    - postgresql
+    ports:
+    - "80:80"
+    - "10022:22"
+    - "3000:3000"
+    volumes:
+    - ./config:/etc/gitlab
+    - ./logs:/var/log/gitlab
+    - ./data:/var/opt/gitlab
+    #- gitlab-data:/home/git/data:Z
+    healthcheck:
+      test: ["CMD", "/usr/local/sbin/healthcheck"]
+      interval: 5m
+      timeout: 10s
+      retries: 3
+      start_period: 5m
+    hostname: '172.28.41.252'
+    environment:
+    - DEBUG=false
+
+    - DB_ADAPTER=postgresql
+    - DB_HOST=postgresql
+    - DB_PORT=5432
+    - DB_USER=gitlab
+    - DB_PASS=password
+    - DB_NAME=gitlabhq_production
+
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
+
+    - TZ=Asia/Taipei
+    - GITLAB_TIMEZONE=Taipei
+
+    - GITLAB_HTTPS=false
+    - SSL_SELF_SIGNED=false
+
+    - GITLAB_HOST=172.28.41.252
+    - GITLAB_PORT=80
+    - GITLAB_SSH_PORT=10022
+    - GITLAB_RELATIVE_URL_ROOT=
+    - GITLAB_SECRETS_DB_KEY_BASE=long-and-random-alphanumeric-string
+    - GITLAB_SECRETS_SECRET_KEY_BASE=long-and-random-alphanumeric-string
+    - GITLAB_SECRETS_OTP_KEY_BASE=long-and-random-alphanumeric-string
+
+    - GITLAB_ROOT_PASSWORD=
+    - GITLAB_ROOT_EMAIL=
+
+    - GITLAB_NOTIFY_ON_BROKEN_BUILDS=true
+    - GITLAB_NOTIFY_PUSHER=false
+
+    - GITLAB_EMAIL=notifications@innotech.me
+    - GITLAB_EMAIL_REPLY_TO=noreply@innotech.me
+    - GITLAB_INCOMING_EMAIL_ADDRESS=reply@innotech.me
+
+    - GITLAB_BACKUP_SCHEDULE=daily
+    - GITLAB_BACKUP_TIME=01:00
+
+
+
+volumes:
+  redis-data:
+  postgresql-data:
+  gitlab-data:
+#docker exec -it gitlab gitlab-backup restore
